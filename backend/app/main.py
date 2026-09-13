@@ -7,7 +7,7 @@ import urllib.error
 import urllib.request
 import json
 
-app = FastAPI(title="A-to-z DSA API", version="0.2.0")
+app = FastAPI(title="A-to-z DSA API", version="0.2.1")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
@@ -37,20 +37,25 @@ ROADMAP = [
     {"id": "18", "title": "Advanced DSA", "problems": 10},
 ]
 
+
 class ExecuteRequest(BaseModel):
     language: Literal["C++", "Java", "Python"]
     source_code: str = Field(min_length=1, max_length=50000)
     stdin: str = Field(default="", max_length=10000)
 
+
 LANGUAGE_IDS = {"C++": 105, "Java": 91, "Python": 109}
+
 
 @app.get("/health")
 def health():
     return {"status": "ok", "service": "a-to-z-api"}
 
+
 @app.get("/api/roadmap")
 def roadmap():
     return ROADMAP
+
 
 @app.post("/api/execute")
 def execute_code(request: ExecuteRequest):
@@ -67,7 +72,11 @@ def execute_code(request: ExecuteRequest):
     req = urllib.request.Request(
         "https://ce.judge0.com/submissions?wait=true",
         data=payload,
-        headers={"Content-Type": "application/json"},
+        headers={
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "User-Agent": "A-to-z-DSA-Compiler/0.2",
+        },
         method="POST",
     )
 
@@ -76,9 +85,15 @@ def execute_code(request: ExecuteRequest):
             result = json.loads(response.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
         detail = exc.read().decode("utf-8", errors="replace")
-        raise HTTPException(status_code=502, detail=f"Execution service rejected the request: {detail}")
+        raise HTTPException(
+            status_code=502,
+            detail=f"Execution service rejected the request: {detail}",
+        )
     except (urllib.error.URLError, TimeoutError) as exc:
-        raise HTTPException(status_code=503, detail=f"Execution service unavailable: {exc}")
+        raise HTTPException(
+            status_code=503,
+            detail=f"Execution service unavailable: {exc}",
+        )
 
     status = result.get("status") or {}
     return {
